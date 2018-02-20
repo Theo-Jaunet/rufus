@@ -16,7 +16,7 @@ import torch.optim as optim
 def init(cfg):
     game = DoomGame()
     game.load_config(cfg)
-    game.set_doom_scenario_path("my_way_home.wad")
+    game.set_doom_scenario_path("scenario/my_way_home.wad")
     game.set_doom_map("map01")
     game.set_mode(Mode.PLAYER)
     game.set_screen_format(ScreenFormat.GRAY8)
@@ -89,8 +89,6 @@ class ReplayMemory:
 
 
 def learn_from_memory():
-    """ Learns from a single transition (making use of replay memory).
-    s2 is ignored if s2_isterminal """
 
     # Get a random minibatch from the replay memory and learns from it.
     if memory.size > 64:
@@ -123,9 +121,9 @@ def learn_from_memory():
 def cap(it, itmax):
     pur = it / itmax
 
-    if it < 1888:
+    if pur < 0.3:
         return 80
-    elif it < 2222:
+    elif it < 0.6:
         return 50
     else:
         return 20
@@ -133,17 +131,17 @@ def cap(it, itmax):
 
 if __name__ == '__main__':
 
-    game = init("my_way_home.cfg")
+    game = init("scenario/my_way_home.cfg")
 
     actions = [list(a) for a in it.product([0, 1], repeat=game.get_available_buttons_size())]
 
     model = Net(len(actions))
 
-    optimizer = torch.optim.SGD(model.parameters(), 0.00025)
+    optimizer = optim.SGD(model.parameters(), 0.00025)
     criterion = nn.MSELoss()
 
     memory = ReplayMemory(25000)
-    with open("log.csv", "w") as f:
+    with open("logs/log.csv", "w") as f:
         f.write("episode,action,reward,posx,posy\n")
         for i in range(5000):
             print("Episode #" + str(i + 1))
