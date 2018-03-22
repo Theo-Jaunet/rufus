@@ -18,15 +18,19 @@ class Log:
         self.features_dir = self.std_dir + "/features/"
         self.models_dir = self.std_dir + "/models/"
         self.csv_dir = self.std_dir + "/csv/"
+        self.temp_dir = ""
+        self.episode_dir = ""
+        self.image_dir = ""
+        self.preimage_dir = ""
 
-        self.make_dir()
+        self.init_dir()
 
-    def make_dir(self):
+    def init_dir(self):
         """# Create directories for logging & model information gathering """
 
         os.makedirs(self.std_dir)
-        os.makedirs(self.weight_dir)
-        os.makedirs(self.features_dir)
+        # os.makedirs(self.weight_dir)
+        # os.makedirs(self.features_dir)
         os.makedirs(self.models_dir)
         os.makedirs(self.csv_dir)
 
@@ -90,3 +94,45 @@ class Log:
         for elem in hidden[0, 0]:
             h += str(elem) + ";"
         h = h[:-1] + "]"
+
+        print(self.temp_dir)
+
+    def make_epoch_dir(self, epoch):
+
+        if not os.path.exists(self.std_dir + "/epoch_" + str(epoch)):
+            os.makedirs(self.std_dir + "/epoch_" + str(epoch))
+            self.temp_dir = self.std_dir + "/epoch_" + str(epoch) + "/"
+
+    def make_dir(self, dir):
+
+        if not os.path.exists(self.temp_dir + dir):
+            os.makedirs(self.temp_dir + dir)
+            if dir == "weights":
+                self.weight_dir = self.temp_dir + dir + "/"
+
+    def save_input(self, img, name, num):
+        """# Save weight matrix into gray shades images """
+
+        img = (img * 255).astype(np.uint8)
+        img = Image.fromarray(img)
+        if num == 0:
+            img.save(self.image_dir + name)
+        elif num == 1:
+            img.save(self.preimage_dir + name)
+
+    def make_episode(self, episode):
+
+        if not os.path.exists(self.temp_dir + "episode_" + str(episode)):
+            os.makedirs(self.temp_dir + "episode_" + str(episode))
+            self.episode_dir = self.temp_dir + "episode_" + str(episode) + "/"
+
+    def make_instance_dir(self, dir):
+
+        if not os.path.exists(self.episode_dir + dir):
+            os.makedirs(self.episode_dir + dir)
+        if dir == "features":
+            self.features_dir = self.episode_dir + dir + "/"
+        elif dir == "images":
+            self.image_dir = self.episode_dir + dir + "/"
+        elif dir == "preimages":
+            self.preimage_dir = self.episode_dir + dir + "/"

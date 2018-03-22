@@ -25,25 +25,25 @@ def parse_args():
     parser.add_argument('--discount_factor', type=float, default=0.99,
                         help='discount factor, also known as gamma ')
 
-    parser.add_argument('--epochs', type=int, default=20,
+    parser.add_argument('--epochs', type=int, default=22,
                         help=' number of epochs')
 
-    parser.add_argument('--steps_per_epoch', type=int, default=200,
+    parser.add_argument('--steps_per_epoch', type=int, default=2000,
                         help=' number of steps per epochs')
 
     parser.add_argument('--replay_memory_size', type=int, default=25000,
                         help=' length of replay memory buffer')
 
-    parser.add_argument('--batch_size', type=int, default=128,
+    parser.add_argument('--batch_size', type=int, default=64,
                         help=' length of sampling from replay memory')
 
-    parser.add_argument('--tests_per_epoch', type=int, default=15,
+    parser.add_argument('--tests_per_epoch', type=int, default=5,
                         help=' number of test episodes per epoch')
 
     parser.add_argument('--frame_repeat', type=int, default=8,
                         help='number of frames last an action')
 
-    parser.add_argument('--resolution', type=tuple, default=(84, 84),
+    parser.add_argument('--resolution', type=tuple, default=(168, 168),
                         help='dimensions of CNN input. Warning value must be a tuple of (width,height)')
 
     parser.add_argument('--episodes_to_watch', type=int, default=15,
@@ -63,6 +63,8 @@ def parse_args():
 
     parser.add_argument('--skip_learning', type=bool, default=False,
                         help=' if you want to skip the learning. Only usable if a model is loaded !')
+    parser.add_argument('--end_eps', type=float, default=0.1,
+                        help=' the lowest epsilon can be')
 
     return parser.parse_args()
 
@@ -78,7 +80,6 @@ def initialize_vizdoom(config_file_path):
     game.set_doom_scenario_path(flags.scenario + ".wad")
     game.set_doom_map("map01")
     game.set_screen_format(ScreenFormat.GRAY8)
-    game.set_screen_resolution(ScreenResolution.RES_640X480)
     print("Doom initialized.")
     return game
 
@@ -154,20 +155,31 @@ def train(agent):
         print("%d training episodes played." % train_episodes_finished)
 
         display_results(train_scores)
+
         print("\nTesting...")
 
         test_scores = []
 
-        for _ in trange(flags.tests_per_epoch, leave=False):
+        for ep in trange(flags.tests_per_epoch, leave=False):
+            log.make_epoch_dir(epoch)
+            save_model_weight(epoch, agent)
             game.new_episode()
             agent.model.reset_hidden()
+            w = 0
             while not game.is_episode_finished():
+
                 state = preprocess(game.get_state().screen_buffer, flags.resolution)
                 state = state.reshape([1, 1, flags.resolution[0], flags.resolution[1]])
                 best_action_index = agent.get_best_action(state)
 
                 game.make_action(agent.action_map[best_action_index], flags.frame_repeat)
 
+                if game.get_state() is not None:
+                    save_model_features(epoch, w, agent, ep)
+
+                    save_inputs(game.get_state().screen_buffer, state.reshape(flags.resolution[0], flags.resolution[1]),
+                                ep, epoch, w)
+                w += 1
             r = game.get_total_reward()
             test_scores.append(r)
 
@@ -180,18 +192,12 @@ def train(agent):
     game.close()
 
 
-def eval(agent):
+def evaluation(agent):
     """# Run trained agent and gather model information to display """
 
     game.set_window_visible(True)
     game.set_mode(Mode.ASYNC_PLAYER)
     game.init()
-
-    temp = agent.model.get_info()
-
-    for w in range(3):
-        for y in range(temp[w].shape[0]):
-            log.save_weight_gray(temp[w][y][0], "weight_layer" + str(w) + "_" + "unit" + str(y) + ".jpg")
 
     for _ in range(flags.episodes_to_watch):
         game.new_episode()
@@ -206,22 +212,52 @@ def eval(agent):
             for _ in range(flags.frame_repeat):
                 game.advance_action()
 
-            for w in range(3, len(temp) - 2):
-                for y in range(temp[w].shape[1]):
-                    log.save_feature_gray(temp[w][0][y], "feature_layer" + str(w) + "_" + "unit" + str(y) + ".jpg")
         sleep(1.0)
         score = game.get_total_reward()
         print("Total score: ", score)
 
 
-def exploration_rate(epoch, i):
-    """# Define exploration rate change over time"""
+def save_model_weight(epoch, agent):
+    temp = agent.model.get_info()
 
-    end_eps = 0.1
+    log.make_dir("weights")
+
+    for w in range(3):
+        for y in range(temp[w].shape[0]):
+            log.save_weight_gray(temp[w][y][0],
+                                 "weight_layer" + str(w) + "_" + "unit" + str(y) + "_" + "epoch" + str(epoch) + ".jpg")
+
+
+def save_model_features(epoch, i, agent, episode):
+    temp = agent.model.get_info()
+    log.make_episode(episode)
+
+    log.make_instance_dir("features")
+
+    for w in range(3, len(temp) - 2):
+        for y in range(temp[w].shape[1]):
+            log.save_feature_gray(temp[w][0][y], "feature_layer" + str(w - 3) + "_" + "unit" + str(y) + "_epoch" + str(
+                epoch) + "_act" + str(i) + ".jpg")
+
+
+def save_inputs(img1, img2, episode, epoch, act):
+    name1 = "input" + str(act) + "_epoch" + str(epoch) + "_episode" + str(episode) + ".jpg"
+    name2 = "preprocess_input" + str(act) + "_epoch" + str(epoch) + "_episode" + str(episode) + ".jpg"
+
+    log.make_instance_dir("images")
+    log.make_instance_dir("preimages")
+
+    log.save_input(img1, name1, 0)
+    log.save_input(img2, name2, 1)
+
+
+def exploration_rate(epoch, i):
+    """# Define and apply epsilon decay over time"""
+
     if epoch < flags.epochs - (round(flags.epochs * 0.2)) > 0:
-        return math.exp(-1 * float(i * epoch) / float(flags.steps_per_epoch * round(flags.epochs * 0.8)))
+        return math.exp(-1.5 * float(i * epoch) / float(flags.steps_per_epoch * round(flags.epochs * 0.8)))
     else:
-        return end_eps
+        return flags.end_eps
 
 
 if __name__ == '__main__':
@@ -239,4 +275,4 @@ if __name__ == '__main__':
         train(agent)
         print("======================================")
         input("Training finished. It's time to watch ! press any key to watch the result")
-    eval(agent)
+    evaluation(agent)

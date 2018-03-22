@@ -7,12 +7,12 @@ from torch.autograd import Variable
 class TNet(nn.Module):
     def __init__(self, available_actions_count, mem):
         super(TNet, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=8, stride=4)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=16, stride=4)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=8, stride=2)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=4, stride=1)
 
         self.lstm_size = 512
-        self.lstm = nn.LSTM(3136, 512, batch_first=True)
+        self.lstm = nn.LSTM(10816, 512, batch_first=True)
         self.mem = mem
         self.h0 = Variable(torch.zeros(1, 1, self.lstm_size), requires_grad=True).cuda()
         self.c0 = Variable(torch.zeros(1, 1, self.lstm_size), requires_grad=True).cuda()
@@ -48,6 +48,7 @@ class TNet(nn.Module):
             self.x1 = F.relu(self.conv1(x))
             self.x2 = F.relu(self.conv2(self.x1))
             self.x3 = F.relu(self.conv3(self.x2))
+
 
             x = self.x3.view(batch_size, 1, -1)
 
