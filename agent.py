@@ -84,11 +84,17 @@ class RdqnAgent():
             self.learn(s1, target_q)
 
     def add_mem_and_learn(self, s1, a, s2, isterminal, reward):
-        """# Add experience to memory buffer"""
+        """# Add experience to memory buffer & learn"""
 
         self.memory.add_transition(s1, a, s2, isterminal, reward)
 
         self.learn_from_memory()
+
+
+    def add_mem(self, s1, a, s2, isterminal, reward):
+        """# Add experience to memory buffer"""
+
+        self.memory.add_transition(s1, a, s2, isterminal, reward)
 
     def save_model(self, path):
         """# Save trained model"""

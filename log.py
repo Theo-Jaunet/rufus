@@ -22,6 +22,8 @@ class Log:
         self.episode_dir = ""
         self.image_dir = ""
         self.preimage_dir = ""
+        self.hidden_dir = ""
+        self.acts_dir = ""
 
         self.init_dir()
 
@@ -33,6 +35,7 @@ class Log:
         # os.makedirs(self.features_dir)
         os.makedirs(self.models_dir)
         os.makedirs(self.csv_dir)
+        self.make_reward()
 
     def file_creation(self):
         """# Create both csv files for logging """
@@ -71,7 +74,7 @@ class Log:
     def save_feature_gray(self, img, name):
         """# Save weight matrix into gray shades images """
 
-        img = (img * 255).astype(np.uint8)
+        img = (img * 255).astype(np.uint8).reshape(img.shape[1], img.shape[0])
         img = Image.fromarray(img)
         img.save(self.features_dir + name)
 
@@ -113,11 +116,12 @@ class Log:
     def save_input(self, img, name, num):
         """# Save weight matrix into gray shades images """
 
-        img = (img * 255).astype(np.uint8)
-        img = Image.fromarray(img)
         if num == 0:
+            img = Image.fromarray(img)
             img.save(self.image_dir + name)
         elif num == 1:
+            img = (img * 255).astype(np.uint8)
+            img = Image.fromarray(img)
             img.save(self.preimage_dir + name)
 
     def make_episode(self, episode):
@@ -136,3 +140,24 @@ class Log:
             self.image_dir = self.episode_dir + dir + "/"
         elif dir == "preimages":
             self.preimage_dir = self.episode_dir + dir + "/"
+        elif dir == "hidden":
+            self.hidden_dir = self.episode_dir + dir + "/"
+        elif dir == "acts":
+            self.acts_dir = self.episode_dir + dir + "/"
+
+    def save_vector(self, hid, vec, name):
+        if vec == "hidden":
+            with open(self.hidden_dir + name, "w") as f:
+                f.write(hid)
+        elif vec == "acts":
+            with open(self.acts_dir + name, "w") as f:
+                f.write(hid)
+
+    def make_reward(self):
+
+        with open(self.csv_dir + "rewards.csv", 'w') as f:
+            f.write("epoch,episode,reward\n")
+
+    def save_reward(self, epoch, episode, reward):
+        with open(self.csv_dir + "rewards.csv", 'a') as f:
+            f.write(str(epoch) + "," + str(episode) + "," + str(reward)+"\n")

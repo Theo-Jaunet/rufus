@@ -5,8 +5,7 @@ import skimage.color, skimage.transform
 
 def preprocess(img, resolution):
     """# Format input with given resolution"""
-
-    img = skimage.transform.resize(img, resolution)
+    img = skimage.transform.resize(img, (resolution[0], resolution[1], 1), mode="reflect")
     img = img.astype(np.float32)
     return img
 
@@ -25,6 +24,10 @@ def getfile(path, extensions):
             files += getfile(path + f + "/", extensions)
 
     return files
+
+
+def norm(x):
+    return (x - 0) / (10 - 0)
 
 
 if __name__ == '__main__':

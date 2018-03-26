@@ -20,10 +20,10 @@ class ReplayMemory:
     def add_transition(self, s1, action, s2, isterminal, reward):
         """# Push transition into buffer memory, remove oldest if the buffer is full """
 
-        self.s1[self.pos, 0, :, :] = s1
+        self.s1[self.pos, :, :, :] = s1
         self.a[self.pos] = action
         if not isterminal:
-            self.s2[self.pos, 0, :, :] = s2
+            self.s2[self.pos, :, :, :] = s2
         self.isterminal[self.pos] = isterminal
         self.r[self.pos] = reward
 
